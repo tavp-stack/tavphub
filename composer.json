@@ -1,11 +1,32 @@
-{
-    "name": "tavp/tavphub",
-    "description": "TAVPhub — admin panel for TAVP (sidebar, dashboard, CRUD resources).",
-    "type": "tavpkit-module",
-    "license": "MIT",
-    "require": { "php": ">=8.1" },
-    "require-dev": { "phpunit/phpunit": "^10.0" },
-    "autoload": { "psr-4": { "Tavp\\Hub\\": "src/" } },
-    "autoload-dev": { "psr-4": { "Tavp\\Hub\\Tests\\": "tests/" } },
-    "config": { "sort-packages": true, "allow-plugins": {} }
+﻿{
+    "name":  "tavp/tavphub",
+    "description":  "TAVPhub â€” admin panel for TAVP (sidebar, dashboard, CRUD resources).",
+    "type":  "tavpkit-module",
+    "license":  "MIT",
+    "require":  {
+                    "php":  "\u003e=8.1"
+                },
+    "require-dev":  {
+                        "phpunit/phpunit":  "^10.0"
+                    },
+    "autoload":  {
+                     "psr-4":  {
+                                   "Tavp\\Hub\\":  "src/"
+                               }
+                 },
+    "autoload-dev":  {
+                         "psr-4":  {
+                                       "Tavp\\Hub\\Tests\\":  "tests/"
+                                   }
+                     },
+    "config":  {
+                   "sort-packages":  true,
+                   "allow-plugins":  {
+
+                                     }
+               },
+    "support":  {
+                    "issues":  "https://github.com/tavp-stack/tavphub/issues",
+                    "source":  "https://github.com/tavp-stack/tavphub"
+                }
 }

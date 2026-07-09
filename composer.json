@@ -1,4 +1,4 @@
-﻿{
+{
     "name":  "tavp/tavphub",
     "description":  "TAVPhub â€” admin panel for TAVP (sidebar, dashboard, CRUD resources).",
     "type":  "tavpkit-module",

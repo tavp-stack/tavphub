@@ -14,10 +14,9 @@ jadi cepat, nggak perlu bikin dari scratch.
 
 ## Requirements
 
-- PHP 8.1+
-- Phalcon 5.x
+- PHP 8.3+
+- Phalcon 5.16+
 - tavp-core
-- tavphub
 
 ## Install
 

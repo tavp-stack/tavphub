@@ -5,283 +5,161 @@ declare(strict_types=1);
 namespace Tavp\Hub;
 
 /**
- * CRUD resource generator for TAVPhub admin panel.
+ * Resource generator — auto-generate CRUD resources from content type definitions.
+ *
+ * Bridges tavp-cms content types with tavphub's admin panel. Reads the
+ * BREAD content type schema and produces Resource + FormBuilder configs.
  */
 class ResourceGenerator
 {
     /**
-     * Generate a full CRUD resource (model + controller + views).
+     * Generate a Resource from a content type definition.
+     *
+     * @param array<string,mixed> $contentType e.g. from config('cms.content_types.page')
      */
-    public function generate(string $name, array $fields): array
+    public static function fromContentType(string $name, array $contentType): Resource
     {
-        $files = [];
+        return new class($name, $contentType) extends Resource
+        {
+            private string $name;
+            private array $contentType;
 
-        // Model
-        $files["app/Models/{$name}.php"] = $this->generateModel($name, $fields);
+            public function __construct(string $name, array $contentType)
+            {
+                $this->name = $name;
+                $this->contentType = $contentType;
+            }
 
-        // Controller
-        $files["app/Controllers/Admin/{$name}Controller.php"] = $this->generateController($name, $fields);
+            public function label(): string
+            {
+                return $this->contentType['label'] ?? ucfirst($this->name) . 's';
+            }
 
-        // Views
-        $viewDir = strtolower($name);
-        $files["resources/views/admin/{$viewDir}/index.volt"] = $this->generateIndexView($name, $fields);
-        $files["resources/views/admin/{$viewDir}/create.volt"] = $this->generateCreateView($name, $fields);
-        $files["resources/views/admin/{$viewDir}/edit.volt"] = $this->generateEditView($name, $fields);
-        $files["resources/views/admin/{$viewDir}/show.volt"] = $this->generateShowView($name, $fields);
+            public function model(): string
+            {
+                return 'Tavp\\Cms\\Content\\' . ucfirst($this->name);
+            }
 
-        // Migration
-        $timestamp = date('Y_m_d_His');
-        $files["database/migrations/{$timestamp}_create_" . strtolower($name) . "_table.php"] = $this->generateMigration($name, $fields);
+            public function columns(): array
+            {
+                $columns = [];
+                foreach ($this->contentType['fields'] ?? [] as $field) {
+                    $columns[] = [
+                        'key' => $field['name'],
+                        'label' => ucwords(str_replace(['_', '-'], ' ', $field['name'])),
+                        'sortable' => !in_array($field['type'] ?? '', ['richtext', 'blocks', 'json']),
+                    ];
+                }
+                return $columns;
+            }
 
-        // Routes
-        $files["routes/admin.php"] = $this->generateRoutes($name);
+            public function fields(): array
+            {
+                $fields = [];
+                foreach ($this->contentType['fields'] ?? [] as $field) {
+                    $fields[] = array_merge($field, [
+                        'label' => ucwords(str_replace(['_', '-'], ' ', $field['name'])),
+                    ]);
+                }
+                return $fields;
+            }
 
-        return $files;
+            public function inSidebar(): bool
+            {
+                return true;
+            }
+        };
     }
 
-    private function generateModel(string $name, array $fields): string
+    /**
+     * Generate a Taxonomy Resource for the admin panel.
+     */
+    public static function taxonomyResource(string $termType): Resource
     {
-        $fillable = implode(', ', array_map(fn($f) => "'{$f}'", array_keys($fields)));
-        $table = strtolower($name) . 's';
+        return new class($termType) extends Resource
+        {
+            private string $termType;
 
-        return <<<PHP
-<?php
+            public function __construct(string $termType)
+            {
+                $this->termType = $termType;
+            }
 
-declare(strict_types=1);
+            public function label(): string
+            {
+                return ucfirst($this->termType) . 's';
+            }
 
-namespace App\Models;
+            public function model(): string
+            {
+                return 'Tavp\\Cms\\Taxonomy\\Term';
+            }
 
-use Tavp\Core\Database\Model;
+            public function columns(): array
+            {
+                return [
+                    ['key' => 'name', 'label' => 'Name', 'sortable' => true],
+                    ['key' => 'slug', 'label' => 'Slug', 'sortable' => true],
+                    ['key' => 'description', 'label' => 'Description', 'sortable' => false],
+                    ['key' => 'sort', 'label' => 'Sort', 'sortable' => true],
+                ];
+            }
 
-class {$name} extends Model
-{
-    protected string \$table = '{$table}';
-    public array \$fillable = [{$fillable}];
-}
-PHP;
+            public function fields(): array
+            {
+                return [
+                    ['name' => 'name', 'type' => 'text', 'label' => 'Name', 'required' => true],
+                    ['name' => 'slug', 'type' => 'text', 'label' => 'Slug'],
+                    ['name' => 'description', 'type' => 'textarea', 'label' => 'Description'],
+                    ['name' => 'sort', 'type' => 'number', 'label' => 'Sort Order', 'value' => 0],
+                    ['name' => 'parent_id', 'type' => 'number', 'label' => 'Parent ID', 'value' => 0],
+                ];
+            }
+
+            public function inSidebar(): bool
+            {
+                return true;
+            }
+        };
     }
 
-    private function generateController(string $name, array $fields): string
+    /**
+     * Generate a Revision Resource (read-only, for viewing history).
+     */
+    public static function revisionResource(): Resource
     {
-        return <<<PHP
-<?php
+        return new class() extends Resource
+        {
+            public function label(): string
+            {
+                return 'Revisions';
+            }
 
-declare(strict_types=1);
+            public function model(): string
+            {
+                return 'Tavp\\Cms\\Revisions\\RevisionStore';
+            }
 
-namespace App\Controllers\Admin;
+            public function columns(): array
+            {
+                return [
+                    ['key' => 'created_at', 'label' => 'Date', 'sortable' => true],
+                    ['key' => 'author', 'label' => 'Author', 'sortable' => true],
+                    ['key' => 'note', 'label' => 'Note', 'sortable' => false],
+                    ['key' => 'content_type', 'label' => 'Type', 'sortable' => true],
+                    ['key' => 'content_id', 'label' => 'Record', 'sortable' => true],
+                ];
+            }
 
-use Tavp\Core\Http\Controller;
-use App\Models\\{$name};
+            public function fields(): array
+            {
+                return [];
+            }
 
-class {$name}Controller extends Controller
-{
-    public function index(): string
-    {
-        \$items = {$name}::all();
-        return \$this->view('admin.' . strtolower('{$name}') . '.index', ['items' => \$items]);
-    }
-
-    public function create(): string
-    {
-        return \$this->view('admin.' . strtolower('{$name}') . '.create');
-    }
-
-    public function store(): void
-    {
-        \$item = new {$name}();
-        \$item->fill(\$this->request->getPost());
-        \$item->save();
-        \$this->response->redirect('/admin/' . strtolower('{$name}'));
-    }
-
-    public function show(int \$id): string
-    {
-        \$item = {$name}::findFirst(\$id);
-        return \$this->view('admin.' . strtolower('{$name}') . '.show', ['item' => \$item]);
-    }
-
-    public function edit(int \$id): string
-    {
-        \$item = {$name}::findFirst(\$id);
-        return \$this->view('admin.' . strtolower('{$name}') . '.edit', ['item' => \$item]);
-    }
-
-    public function update(int \$id): void
-    {
-        \$item = {$name}::findFirst(\$id);
-        \$item->fill(\$this->request->getPost());
-        \$item->save();
-        \$this->response->redirect('/admin/' . strtolower('{$name}'));
-    }
-
-    public function destroy(int \$id): void
-    {
-        \$item = {$name}::findFirst(\$id);
-        \$item->delete();
-        \$this->response->redirect('/admin/' . strtolower('{$name}'));
-    }
-}
-PHP;
-    }
-
-    private function generateIndexView(string $name, array $fields): string
-    {
-        $headers = '';
-        foreach ($fields as $field => $type) {
-            $headers .= "                    <th class=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">{$field}</th>\n";
-        }
-
-        return <<<VOLT
-{% extends 'admin/layouts/app.volt' %}
-
-{% block content %}
-<div class="max-w-7xl mx-auto py-8 px-4">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">{{ '{$name}' }}</h1>
-        <a href="/admin/{ strtolower($name) }/create" class="bg-blue-600 text-white px-4 py-2 rounded">Create</a>
-    </div>
-
-    <div class="bg-white shadow rounded-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-{$headers}
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for item in items %}
-                <tr>
-                    {% for field in fields %}
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.{field} }}</td>
-                    {% endfor %}
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <a href="/admin/{ strtolower($name) }/{{ item.id }}" class="text-blue-600 hover:underline">View</a>
-                        <a href="/admin/{ strtolower($name) }/{{ item.id }}/edit" class="text-yellow-600 hover:underline ml-2">Edit</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endblock %}
-VOLT;
-    }
-
-    private function generateCreateView(string $name, array $fields): string
-    {
-        return <<<VOLT
-{% extends 'admin/layouts/app.volt' %}
-
-{% block content %}
-<div class="max-w-3xl mx-auto py-8 px-4">
-    <h1 class="text-2xl font-bold mb-6">Create {$name}</h1>
-    <form method="POST" action="/admin/{ strtolower($name) }" class="bg-white shadow rounded-lg p-6">
-        {% for field, type in fields %}
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700">{{ field }}</label>
-            <input type="text" name="{{ field }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-        </div>
-        {% endfor %}
-        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Save</button>
-    </form>
-</div>
-{% endblock %}
-VOLT;
-    }
-
-    private function generateEditView(string $name, array $fields): string
-    {
-        return <<<VOLT
-{% extends 'admin/layouts/app.volt' %}
-
-{% block content %}
-<div class="max-w-3xl mx-auto py-8 px-4">
-    <h1 class="text-2xl font-bold mb-6">Edit {$name}</h1>
-    <form method="POST" action="/admin/{ strtolower($name) }/{{ item.id }}" class="bg-white shadow rounded-lg p-6">
-        {% for field, type in fields %}
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700">{{ field }}</label>
-            <input type="text" name="{{ field }}" value="{{ item.{field} }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-        </div>
-        {% endfor %}
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Update</button>
-    </form>
-</div>
-{% endblock %}
-VOLT;
-    }
-
-    private function generateShowView(string $name, array $fields): string
-    {
-        return <<<VOLT
-{% extends 'admin/layouts/app.volt' %}
-
-{% block content %}
-<div class="max-w-3xl mx-auto py-8 px-4">
-    <h1 class="text-2xl font-bold mb-6">{$name} Details</h1>
-    <div class="bg-white shadow rounded-lg p-6">
-        {% for field, type in fields %}
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700">{{ field }}</label>
-            <p class="mt-1 text-gray-900">{{ item.{field} }}</p>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endblock %}
-VOLT;
-    }
-
-    private function generateMigration(string $name, array $fields): string
-    {
-        $table = strtolower($name) . 's';
-        $timestamp = date('Y_m_d_His');
-
-        $columns = '';
-        foreach ($fields as $field => $type) {
-            $columns .= "            \$table->{$field}('{$field}', '{$type}');\n";
-        }
-
-        return <<<PHP
-<?php
-
-use Tavp\Core\Database\Migrations\SchemaBuilder;
-
-class Create{$name}sTable
-{
-    public function up(SchemaBuilder \$schema): void
-    {
-        \$schema->createTable('{$table}', function (\$table) use (\$schema) {
-            \$table->add(\$schema->column('id', 'integer', ['identity' => true, 'primary' => true]));
-{$columns}            \$table->add(\$schema->column('created_at', 'datetime', ['null' => true]));
-            \$table->add(\$schema->column('updated_at', 'datetime', ['null' => true]));
-        });
-    }
-
-    public function down(SchemaBuilder \$schema): void
-    {
-        \$schema->dropTable('{$table}');
-    }
-}
-PHP;
-    }
-
-    private function generateRoutes(string $name): string
-    {
-        $snake = strtolower($name) . 's';
-
-        return <<<PHP
-<?php
-
-\$router->addGet('/admin/{$snake}', [{$name}Controller::class, 'index']);
-\$router->addGet('/admin/{$snake}/create', [{$name}Controller::class, 'create']);
-\$router->addPost('/admin/{$snake}', [{$name}Controller::class, 'store']);
-\$router->addGet('/admin/{$snake}/{id:int}', [{$name}Controller::class, 'show']);
-\$router->addGet('/admin/{$snake}/{id:int}/edit', [{$name}Controller::class, 'edit']);
-\$router->addPost('/admin/{$snake}/{id:int}', [{$name}Controller::class, 'update']);
-\$router->addPost('/admin/{$snake}/{id:int}/delete', [{$name}Controller::class, 'destroy']);
-PHP;
+            public function inSidebar(): bool
+            {
+                return false; // accessed from content record, not sidebar
+            }
+        };
     }
 }

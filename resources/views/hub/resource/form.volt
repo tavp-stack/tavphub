@@ -42,7 +42,18 @@
                     {% for opt in field['options'] | default([]) %}
                         {% set optVal = opt['value'] | default(opt) %}
                         {% set optLabel = opt['label'] | default(opt) %}
-                        <option value="{{ optVal }}" {% if (string) optVal == (string) value %}selected{% endif %}>{{ optLabel }}</option>
+                        <option value="{{ optVal }}" {% if optVal == value %}selected{% endif %}>{{ optLabel }}</option>
+                    {% endfor %}
+                </select>
+
+            {% elseif type == 'belongsTo' %}
+                {% set relOpts = relation_options[name] | default([]) %}
+                <select name="{{ name }}" id="{{ name }}"
+                    class="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    {% if required %}required{% endif %}>
+                    <option value="">— Select —</option>
+                    {% for opt in relOpts %}
+                        <option value="{{ opt['value'] }}" {% if (opt['value'] | default('')) == value %}selected{% endif %}>{{ opt['label'] }}</option>
                     {% endfor %}
                 </select>
 

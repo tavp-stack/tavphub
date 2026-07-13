@@ -32,6 +32,13 @@ class HubModule
         $router->get("{$prefix}/resource/{resource}", [\Tavp\Hub\Controllers\ResourceController::class, 'index']);
         $router->get("{$prefix}/resource/{resource}/create", [\Tavp\Hub\Controllers\ResourceController::class, 'create']);
         $router->post("{$prefix}/resource/{resource}", [\Tavp\Hub\Controllers\ResourceController::class, 'store']);
+
+        // Lenses (must precede {id} routes so the literal segment wins)
+        $router->get("{$prefix}/resource/{resource}/lens/{lens}", [\Tavp\Hub\Controllers\ResourceController::class, 'lens']);
+
+        // Bulk/row actions
+        $router->post("{$prefix}/resource/{resource}/action/{action}", [\Tavp\Hub\Controllers\ResourceController::class, 'runAction']);
+
         $router->get("{$prefix}/resource/{resource}/{id}/edit", [\Tavp\Hub\Controllers\ResourceController::class, 'edit']);
         $router->post("{$prefix}/resource/{resource}/{id}", [\Tavp\Hub\Controllers\ResourceController::class, 'update']);
         $router->post("{$prefix}/resource/{resource}/{id}/delete", [\Tavp\Hub\Controllers\ResourceController::class, 'destroy']);

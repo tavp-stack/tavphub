@@ -5,12 +5,20 @@ jadi cepat, nggak perlu bikin dari scratch.
 
 ## Features
 
+TavpHub adalah "Laravel Nova-nya Phalcon" — **gratis & MIT** (Nova berbayar
+per project). Cukup definisikan satu `Resource` per model.
+
 - **CRUD resources** — Auto-generated index, create, edit, delete views
-- **Table builder** — Columns, sortable, searchable, filters, bulk actions
-- **Form builder** — Field types, validation, file upload
-- **Dashboard widgets** — Stats, charts, recent activity
-- **Sidebar navigation** — Auto-generated from registered resources
-- **Role guard** — Access control per role
+- **Resource auto-discovery** — scan folder, tak perlu wiring manual
+- **Filters** — saring tabel (select/date/boolean/custom)
+- **Metrics** — kartu angka + delta di dashboard & atas tabel
+- **Actions** — aksi bulk terhadap baris terpilih
+- **Lenses** — tampilan alternatif yang sudah difilter
+- **Relationships** — field `belongsTo` jadi dropdown otomatis
+- **Policies** — otorisasi per ability (viewAny/view/create/update/delete/...)
+- **Search** — pencarian global antar kolom
+- **Table & Form builder** — field types, validation, old input
+- **UI via tavpblocks** — StatCard, Pagination, Badge, Alert (dengan fallback)
 
 ## Requirements
 

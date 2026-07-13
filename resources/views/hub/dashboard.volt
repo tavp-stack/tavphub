@@ -3,6 +3,8 @@
 {% block content %}
 <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
 
+{{ metric_html | default('') }}
+
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     {% for key, stat in stats %}
         <div class="rounded-lg bg-gray-900 border border-gray-800 p-6">
@@ -11,9 +13,9 @@
         </div>
     {% endfor %}
 
-    {% if stats is empty %}
+    {% if stats is empty and (metric_html | default('')) == '' %}
         <div class="col-span-3 rounded-lg bg-gray-900 border border-gray-800 p-6 text-center text-gray-500">
-            No resources configured. Add resources to config('hub.resources').
+            No resources configured. Register resources via <code>ResourceRegistry</code> or config('hub.resources').
         </div>
     {% endif %}
 </div>

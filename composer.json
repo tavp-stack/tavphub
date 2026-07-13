@@ -10,11 +10,18 @@
         "tavp/core": "^1.1"
     },
     "require-dev": {
-        "phpunit/phpunit": "^10.0"
+        "phpunit/phpunit": "^10.0",
+        "tavp/tavpblocks": "@dev"
     },
     "suggest": {
         "tavp/blocks": "UI components (StatCard, Pagination, Badge, Alert) used by the panel when installed"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../tavpblocks"
+        }
+    ],
     "autoload": {
         "psr-4": {
             "Tavp\\Hub\\": "src/"
@@ -27,7 +34,7 @@
     },
     "config": {
         "sort-packages": true,
-        "allow-plugins": []
+        "allow-plugins": {}
     },
     "support": {
         "issues": "https://github.com/tavp-stack/tavphub/issues",

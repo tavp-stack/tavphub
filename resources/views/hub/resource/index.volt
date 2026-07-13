@@ -1,47 +1,26 @@
 {% extends 'hub/layouts/admin.volt' %}
 
 {% block content %}
+{% if flash_html is defined and flash_html != '' %}
+    {% autoescape false %}{{ flash_html }}{% autoescape true %}
+{% endif %}
+
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-bold">{{ resource['label'] | default('Records') }}</h1>
-    <a href="{{ config('hub.admin_prefix', '/admin') }}/resource/{{ resource_key }}/create"
-       class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-        + New {{ resource['singular'] | default('Record') }}
-    </a>
+    {% autoescape false %}{{ new_html }}{% autoescape true %}
 </div>
 
-{# Resource metric cards #}
-{% if metrics is not empty %}
-<div class="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 lg:grid-cols-4">
-    {% for m in metrics %}
-        <div class="rounded-lg bg-gray-900 border border-gray-800 p-5">
-            <div class="text-sm text-gray-400">{{ m['label'] }}</div>
-            <div class="text-3xl font-bold mt-1">{{ m['value'] }}</div>
-            {% if m['delta'] is defined and m['delta'] != '' %}
-                {% set dc = m['delta_color'] == 'green' ? 'text-green-400' : (m['delta_color'] == 'red' ? 'text-red-400' : 'text-gray-500') %}
-                <div class="text-sm mt-1 {{ dc }}">{{ m['delta'] }}</div>
-            {% endif %}
-        </div>
-    {% endfor %}
-</div>
+{# Resource metric cards (tavpblocks StatCard + trend charts) #}
+{% if metrics_html is defined and metrics_html != '' %}
+    {% autoescape false %}{{ metrics_html }}{% autoescape true %}
 {% endif %}
 
-{# Lenses switcher #}
+{# Lenses switcher (tavpblocks Dropdown when available) #}
 {% if lenses is not empty %}
-<div class="flex flex-wrap gap-2 mb-4">
-    <a href="{{ config('hub.admin_prefix', '/admin') }}/resource/{{ resource_key }}"
-       class="rounded-lg px-3 py-1.5 text-sm border {{ active_lens is empty ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-700 text-gray-300 hover:bg-gray-800' }}">
-        All
-    </a>
-    {% for lens in lenses %}
-        <a href="{{ config('hub.admin_prefix', '/admin') }}/resource/{{ resource_key }}/lens/{{ lens['name'] }}"
-           class="rounded-lg px-3 py-1.5 text-sm border {{ active_lens == lens['name'] ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-700 text-gray-300 hover:bg-gray-800' }}">
-            {{ lens['label'] }}
-        </a>
-    {% endfor %}
-</div>
+    {% autoescape false %}{{ lens_html }}{% autoescape true %}
 {% endif %}
 
-{# Filters + search #}
+{# Filters + search (tavpblocks SearchBar when available) #}
 {% if filters is not empty or search is defined %}
 <form method="get" action="{{ config('hub.admin_prefix', '/admin') }}/resource/{{ resource_key }}" class="rounded-lg bg-gray-900 border border-gray-800 p-4 mb-4 flex flex-wrap items-end gap-3">
     {% for f in filters %}
@@ -72,7 +51,7 @@
     {% endfor %}
     <div>
         <label class="block text-xs text-gray-400 mb-1">Search</label>
-        <input type="text" name="search" value="{{ search | default('') }}" placeholder="Search..." class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white">
+        {% autoescape false %}{{ search_html }}{% autoescape true %}
     </div>
     <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Apply</button>
 </form>
@@ -106,7 +85,7 @@ document.getElementById('bulk-form').addEventListener('submit', function (e) {
             <tr>
                 {% if actions is not empty %}<th class="px-4 py-3"></th>{% endif %}
                 {% for col in columns %}
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{{ col['label'] | default(col['field'] | default('')) }}</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{{ col['label'] | default(col['field']) | default(col['key']) | default('') }}</th>
                 {% endfor %}
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
             </tr>
@@ -120,7 +99,13 @@ document.getElementById('bulk-form').addEventListener('submit', function (e) {
                         </td>
                     {% endif %}
                     {% for col in columns %}
-                        <td class="px-6 py-4 text-sm text-gray-300">{{ record[col['field'] | default(col['key'] | default(''))] | default('') }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-300">
+                            {% if col['key'] in badge_keys %}
+                                {% autoescape false %}{{ record[col['key']] | default('') }}{% autoescape true %}
+                            {% else %}
+                                {{ record[col['field'] | default(col['key']) | default('')] | default('') }}
+                            {% endif %}
+                        </td>
                     {% endfor %}
                     <td class="px-6 py-4 text-sm">
                         <a href="{{ config('hub.admin_prefix', '/admin') }}/resource/{{ resource_key }}/{{ record['id'] | default('') }}/edit"

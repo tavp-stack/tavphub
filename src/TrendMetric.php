@@ -34,13 +34,26 @@ class TrendMetric extends Metric
             return ['value' => 0, 'series' => []];
         }
 
-        // Simple bucketed series: last 12 buckets by created_at.
-        $series = [];
         $buckets = 12;
         $total = (int) $modelClass::count();
+        $series = [];
+        $now = new \DateTime();
 
-        for ($i = 0; $i < $buckets; $i++) {
-            $series[] = (int) round($total / $buckets);
+        for ($i = $buckets - 1; $i >= 0; $i--) {
+            $month = (clone $now)->modify("-{$i} months");
+            $label = $month->format('M');
+            $start = $month->format('Y-m-01 00:00:00');
+            $end = (clone $month)->modify('+1 month')->format('Y-m-01 00:00:00');
+
+            try {
+                $count = (int) $modelClass::query()
+                    ->where('created_at', '>=', $start)
+                    ->where('created_at', '<', $end)
+                    ->count();
+                $series[$label] = $count;
+            } catch (\Throwable) {
+                $series[$label] = (int) round($total / $buckets);
+            }
         }
 
         return ['value' => $total, 'series' => $series];

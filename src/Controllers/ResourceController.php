@@ -52,7 +52,11 @@ class ResourceController extends HubController
             ];
         }
 
+        $badgeKeys = $this->badgeKeys($res->columns());
+        $rows = $this->decorateBadges($rows, $badgeKeys);
+
         $baseUrl = $this->indexUrl($resource, $filterValues, $search);
+        $prefix = config('hub.admin_prefix', '/admin');
 
         return $this->view('hub::resource.index', [
             'resource' => $res->definition(),
@@ -62,13 +66,19 @@ class ResourceController extends HubController
             'filters' => array_map(static fn ($f) => $f instanceof Filter ? $f->toArray() : $f, $res->filters()),
             'filter_values' => $filterValues,
             'search' => $search,
+            'search_html' => UI::searchBar('search', $search, 'Search...'),
+            'new_html' => UI::button('+ New ' . $res->singular(), 'primary', "{$prefix}/resource/{$resource}/create"),
             'lenses' => array_map(static fn ($l) => $l instanceof Lens ? $l->toArray() : $l, $res->lenses()),
+            'lens_html' => $this->lensDropdown($res, null, $baseUrl),
             'active_lens' => null,
             'actions' => $this->actionList($res),
+            'metrics_html' => $this->metricsHtml($res),
             'metrics' => $this->metricCards($res),
+            'badge_keys' => $badgeKeys,
             'relation_options' => $this->relationOptions($res),
             'pagination' => $pagination,
             'base_url' => $baseUrl,
+            'flash_html' => $this->flashHtml(),
         ]);
     }
 
@@ -119,6 +129,10 @@ class ResourceController extends HubController
             ];
         }
 
+        $badgeKeys = $this->badgeKeys($columns);
+        $rows = $this->decorateBadges($rows, $badgeKeys);
+        $prefix = config('hub.admin_prefix', '/admin');
+
         return $this->view('hub::resource.index', [
             'resource' => $res->definition(),
             'resource_key' => $resource,
@@ -127,13 +141,19 @@ class ResourceController extends HubController
             'filters' => [],
             'filter_values' => [],
             'search' => '',
+            'search_html' => UI::searchBar('search', '', 'Search...'),
+            'new_html' => UI::button('+ New ' . $res->singular(), 'primary', "{$prefix}/resource/{$resource}/create"),
             'lenses' => array_map(static fn ($l) => $l instanceof Lens ? $l->toArray() : $l, $res->lenses()),
+            'lens_html' => $this->lensDropdown($res, $lens, "{$prefix}/resource/{$resource}/lens"),
             'active_lens' => $lens,
             'actions' => $this->actionList($res),
+            'metrics_html' => '',
             'metrics' => [],
+            'badge_keys' => $badgeKeys,
             'relation_options' => $this->relationOptions($res),
             'pagination' => $pagination,
-            'base_url' => config('hub.admin_prefix', '/admin') . '/resource/' . $resource . '/lens/' . $lens,
+            'base_url' => "{$prefix}/resource/{$resource}/lens/{$lens}",
+            'flash_html' => $this->flashHtml(),
         ]);
     }
 
@@ -457,6 +477,85 @@ class ResourceController extends HubController
         }
 
         return $out;
+    }
+
+    /**
+     * Replace status-ish cell values with pre-rendered badge HTML.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @param string[] $badgeKeys
+     * @return array<int, array<string, mixed>>
+     */
+    private function decorateBadges(array $rows, array $badgeKeys): array
+    {
+        if ($badgeKeys === []) {
+            return $rows;
+        }
+
+        foreach ($rows as &$row) {
+            foreach ($badgeKeys as $key) {
+                if (!array_key_exists($key, $row)) {
+                    continue;
+                }
+                $row[$key] = UI::badge((string) $row[$key], $this->badgeColor($row[$key]));
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Build the lens switcher dropdown (tavpblocks Dropdown when available).
+     */
+    private function lensDropdown(Resource $res, ?string $active, string $baseUrl): string
+    {
+        $prefix = config('hub.admin_prefix', '/admin');
+        $items = [['label' => 'All', 'url' => "{$prefix}/resource/{$res->uriKey()}"]];
+
+        foreach ($res->lenses() as $lens) {
+            if (!$lens instanceof Lens) {
+                continue;
+            }
+            $items[] = ['label' => $lens->label, 'url' => "{$baseUrl}/{$lens->name}"];
+        }
+
+        return UI::dropdown('Lenses', $items);
+    }
+
+    /**
+     * Render the resource's metric cards (+ trend charts) as HTML.
+     */
+    private function metricsHtml(Resource $res): string
+    {
+        $cards = '';
+        $charts = '';
+
+        foreach ($res->metrics() as $metric) {
+            if (!is_object($metric) || !method_exists($metric, 'calculate')) {
+                continue;
+            }
+            $computed = $metric->calculate($res->model());
+            $cards .= UI::statCard(
+                $metric->label,
+                $computed['value'] ?? 0,
+                $computed['delta'] ?? '',
+                $computed['deltaColor'] ?? 'gray'
+            );
+
+            if ($metric instanceof \Tavp\Hub\TrendMetric) {
+                $charts .= UI::chart($metric->label, $computed['series'] ?? [], 'line', 90);
+            }
+        }
+
+        $html = '';
+        if ($cards !== '') {
+            $html .= '<div class="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 lg:grid-cols-4">' . $cards . '</div>';
+        }
+        if ($charts !== '') {
+            $html .= '<div class="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-2">' . $charts . '</div>';
+        }
+
+        return $html;
     }
 
     /**

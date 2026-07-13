@@ -67,6 +67,73 @@ abstract class HubController extends BaseController
     }
 
     /**
+     * Render flash messages (success/error) as HTML (tavpblocks Alert
+     * when available). Print inside a Volt `{% autoescape false %}` block.
+     */
+    protected function flashHtml(): string
+    {
+        $html = '';
+        $success = $_SESSION['hub_flash']['success'] ?? null;
+        $error = $_SESSION['hub_flash']['error'] ?? null;
+        unset($_SESSION['hub_flash']['success'], $_SESSION['hub_flash']['error']);
+
+        if (is_string($success) && $success !== '') {
+            $html .= \Tavp\Hub\UI::alert($success, 'success');
+        }
+        if (is_string($error) && $error !== '') {
+            $html .= \Tavp\Hub\UI::alert($error, 'error');
+        }
+
+        return $html;
+    }
+
+    /**
+     * Column keys that should render as status badges.
+     *
+     * @param array<int, array<string, mixed>> $columns
+     * @return string[]
+     */
+    protected function badgeKeys(array $columns): array
+    {
+        $statusish = ['status', 'state', 'active', 'is_active', 'published', 'enabled', 'visible', 'approved'];
+        $keys = [];
+        foreach ($columns as $col) {
+            $key = $col['key'] ?? $col['field'] ?? null;
+            if ($key === null) {
+                continue;
+            }
+            if (($col['badge'] ?? false) || in_array(strtolower((string) $key), $statusish, true)) {
+                $keys[] = $key;
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * Pick a badge color for a status-ish value.
+     */
+    protected function badgeColor(mixed $value): string
+    {
+        $v = strtolower((string) $value);
+        $green = ['active', 'published', 'enabled', 'visible', 'approved', '1', 'true', 'yes', 'open', 'paid'];
+        $red = ['inactive', 'draft', 'banned', 'disabled', '0', 'false', 'no', 'closed', 'unpaid', 'trash'];
+        $yellow = ['pending', 'review', 'waiting', 'processing'];
+
+        if (in_array($v, $green, true)) {
+            return 'green';
+        }
+        if (in_array($v, $red, true)) {
+            return 'red';
+        }
+        if (in_array($v, $yellow, true)) {
+            return 'yellow';
+        }
+
+        return 'gray';
+    }
+
+    /**
      * The currently authenticated user (from tavpid session), or null.
      */
     protected function currentUser(): mixed
@@ -75,10 +142,44 @@ abstract class HubController extends BaseController
     }
 
     /**
+     * Run resource auto-discovery once, based on config('hub.discovery').
+     */
+    protected function ensureDiscovery(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        $cfg = config('hub.discovery');
+        if ($cfg === null || $cfg === false) {
+            return;
+        }
+        if (is_array($cfg) && ($cfg['enabled'] ?? true) === false) {
+            return;
+        }
+
+        $path = is_array($cfg) ? ($cfg['path'] ?? null) : null;
+        $ns = is_array($cfg) ? ($cfg['namespace'] ?? null) : null;
+
+        if ($path === null) {
+            $path = function_exists('app_path') ? app_path('Resources') : getcwd() . '/app/Resources';
+        }
+        if ($ns === null) {
+            $ns = 'App\\Resources';
+        }
+
+        ResourceRegistry::discover($path, $ns);
+    }
+
+    /**
      * All registered resources (config + auto-discovered) as definitions.
      */
     protected function getResources(): array
     {
+        $this->ensureDiscovery();
+
         $merged = config('hub.resources', []);
 
         foreach (ResourceRegistry::all() as $key => $resource) {
@@ -93,6 +194,8 @@ abstract class HubController extends BaseController
      */
     protected function resolveResource(string $key): ?Resource
     {
+        $this->ensureDiscovery();
+
         if (ResourceRegistry::has($key)) {
             return ResourceRegistry::get($key);
         }

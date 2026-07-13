@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tavp\Hub\Controllers;
 
 use Tavp\Hub\HubController;
+use Tavp\Hub\TrendMetric;
 use Tavp\Hub\UI;
 use Tavp\Core\Http\Response;
 
@@ -25,16 +26,18 @@ class DashboardController extends HubController
         return $this->view('hub::dashboard', [
             'stats' => $stats,
             'metric_html' => $metricHtml,
+            'flash_html' => $this->flashHtml(),
             'recent_activity' => [],
         ]);
     }
 
     /**
-     * Render metric cards from all registered resources.
+     * Render metric cards (+ trend charts) from all registered resources.
      */
     private function renderMetrics(): string
     {
-        $html = '';
+        $cards = '';
+        $charts = '';
 
         foreach (\Tavp\Hub\ResourceRegistry::all() as $key => $resource) {
             foreach ($resource->metrics() as $metric) {
@@ -43,20 +46,29 @@ class DashboardController extends HubController
                 }
 
                 $computed = $metric->calculate($resource->model());
-                $html .= UI::statCard(
+                $cards .= UI::statCard(
                     $metric->label,
                     $computed['value'] ?? 0,
                     $computed['delta'] ?? '',
                     $computed['deltaColor'] ?? 'gray'
                 );
+
+                if ($metric instanceof TrendMetric) {
+                    $series = $computed['series'] ?? [];
+                    $charts .= UI::chart($metric->label, $series, 'line', 90);
+                }
             }
         }
 
-        if ($html === '') {
-            return '';
+        $html = '';
+        if ($cards !== '') {
+            $html .= '<div class="grid grid-cols-1 gap-6 mb-8 sm:grid-cols-2 lg:grid-cols-4">' . $cards . '</div>';
+        }
+        if ($charts !== '') {
+            $html .= '<div class="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-2">' . $charts . '</div>';
         }
 
-        return '<div class="grid grid-cols-1 gap-6 mb-8 sm:grid-cols-2 lg:grid-cols-4">' . $html . '</div>';
+        return $html;
     }
 
     private function collectStats(): array

@@ -210,4 +210,24 @@ class HubTest extends TestCase
         $this->assertCount(1, $res->lenses());
         $this->assertCount(1, $res->actions());
     }
+
+    public function testUiRendersRealTavpblocksComponents(): void
+    {
+        // Dropdown must build a real component with items (not throw).
+        $dropdown = \Tavp\Hub\UI::dropdown('Lenses', [
+            ['label' => 'All', 'url' => '/admin/user'],
+            ['label' => 'Admins', 'url' => '/admin/user/lens/admins'],
+        ]);
+        $this->assertStringContainsString('All', $dropdown);
+        $this->assertStringContainsString('/admin/user/lens/admins', $dropdown);
+
+        // Chart must render a canvas + Chart.js config without error.
+        $chart = \Tavp\Hub\UI::chart('Signups', ['Jan' => 10, 'Feb' => 20, 'Mar' => 15], 'line', 90);
+        $this->assertStringContainsString('<canvas', $chart);
+        $this->assertStringContainsString('Jan', $chart);
+
+        // StatCard + Badge must render component markup.
+        $this->assertStringContainsString('Total Users', \Tavp\Hub\UI::statCard('Total Users', 1200, '+12%', 'green'));
+        $this->assertStringContainsString('active', \Tavp\Hub\UI::badge('active', 'green'));
+    }
 }

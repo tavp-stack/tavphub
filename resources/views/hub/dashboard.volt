@@ -1,9 +1,15 @@
 {% extends 'hub/layouts/admin.volt' %}
 
 {% block content %}
+{% if flash_html is defined and flash_html != '' %}
+    {% autoescape false %}{{ flash_html }}{% autoescape true %}
+{% endif %}
+
 <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
 
-{{ metric_html | default('') }}
+{% if metric_html is defined and metric_html != '' %}
+    {% autoescape false %}{{ metric_html }}{% autoescape true %}
+{% endif %}
 
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     {% for key, stat in stats %}

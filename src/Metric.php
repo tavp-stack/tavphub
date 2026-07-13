@@ -16,6 +16,7 @@ abstract class Metric
     public string $label;
     public string $type = 'value';
     public string $icon = 'chart';
+    public string $color = 'brand';
 
     public function __construct(string $name, ?string $label = null)
     {
@@ -26,6 +27,13 @@ abstract class Metric
     public function icon(string $icon): static
     {
         $this->icon = $icon;
+
+        return $this;
+    }
+
+    public function color(string $color): static
+    {
+        $this->color = $color;
 
         return $this;
     }
@@ -44,6 +52,7 @@ abstract class Metric
             'label' => $this->label,
             'type' => $this->type,
             'icon' => $this->icon,
+            'color' => $this->color,
         ];
     }
 }

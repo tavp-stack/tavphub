@@ -33,9 +33,36 @@ class UI
         return $component === null ? self::fallback($name, $props) : $component->render();
     }
 
-    public static function statCard(string $label, $value, string $trend = '', string $trendColor = 'gray'): string
+    /**
+     * @param string|int|float $value
+     * @param array<int|float> $sparkline
+     */
+    public static function statCard(string $label, $value, string $trend = '', string $trendColor = 'gray', string $icon = '', string $color = 'brand', array $sparkline = [], string $theme = 'auto'): string
     {
-        return self::block('StatCard', ['label' => $label, 'value' => $value, 'trend' => $trend, 'trendColor' => $trendColor]);
+        return self::block('StatCard', [
+            'label' => $label,
+            'value' => $value,
+            'trend' => $trend,
+            'trendColor' => $trendColor,
+            'icon' => $icon,
+            'color' => $color,
+            'sparkline' => $sparkline,
+            'theme' => $theme,
+        ]);
+    }
+
+    /**
+     * Render a panel Card (title/body/footer/actions) with light/dark theme.
+     */
+    public static function card(string $title, string $body, string $footer = '', string $actions = '', string $theme = 'auto'): string
+    {
+        return self::block('Card', [
+            'title' => $title,
+            'body' => $body,
+            'footer' => $footer,
+            'actions' => $actions,
+            'theme' => $theme,
+        ]);
     }
 
     public static function pagination(int $current, int $total, string $baseUrl): string
@@ -43,10 +70,10 @@ class UI
         return self::block('Pagination', ['currentPage' => $current, 'totalPages' => $total, 'baseUrl' => $baseUrl]);
     }
 
-    public static function badge(string $text, string $color = 'gray'): string
+    public static function badge(string $text, string $color = 'gray', string $variant = 'soft', string $theme = 'auto'): string
     {
         if (class_exists(\Tavp\Blocks\BlockRegistry::class)) {
-            return self::block('Badge', ['label' => $text, 'color' => $color]);
+            return self::block('Badge', ['label' => $text, 'color' => $color, 'variant' => $variant, 'theme' => $theme]);
         }
 
         $classes = match ($color) {
@@ -60,10 +87,10 @@ class UI
         return '<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ' . $classes . '">' . htmlspecialchars($text) . '</span>';
     }
 
-    public static function alert(string $message, string $type = 'info'): string
+    public static function alert(string $message, string $type = 'info', string $title = '', bool $dismissible = false, string $theme = 'auto'): string
     {
         if (class_exists(\Tavp\Blocks\BlockRegistry::class)) {
-            return self::block('Alert', ['message' => $message, 'type' => $type]);
+            return self::block('Alert', ['message' => $message, 'type' => $type, 'title' => $title, 'dismissible' => $dismissible, 'theme' => $theme]);
         }
 
         $classes = match ($type) {
@@ -83,10 +110,10 @@ class UI
         }
 
         $classes = match ($variant) {
-            'primary' => 'bg-blue-600 text-white hover:bg-blue-700',
+            'primary' => 'bg-brand-600 text-white hover:bg-brand-700',
             'danger' => 'bg-red-600 text-white hover:bg-red-700',
-            'ghost' => 'bg-transparent text-gray-600 hover:bg-gray-100',
-            default => 'bg-gray-200 text-gray-800 hover:bg-gray-300',
+            'ghost' => 'bg-transparent text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800',
+            default => 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600',
         };
 
         $tag = $href !== '' ? 'a' : 'button';

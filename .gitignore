@@ -21,3 +21,6 @@ Thumbs.db
 # Build
 node_modules/
 dist/
+
+# opencode local context (jangan di-push)
+.opencode/
